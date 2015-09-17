@@ -56,10 +56,10 @@
  */
 #define NO_PORTB_PINCHANGES 
 
-#include <DigitalIO.h>     // This include can be removed when using UIPEthernet module  
+//#include <DigitalIO.h>     // This include can be removed when using UIPEthernet module  
 #include <SPI.h>  
 
-#include <MySigningNone.h>
+//#include <MySigningNone.h>
 #include <MyTransportRFM69.h>
 #include <MyTransportNRF24.h>
 #include <MyHwATMega328.h>
@@ -77,7 +77,12 @@
 // #include <UIPEthernet.h>  
 
 // Use this for WizNET W5100 module and Arduino Ethernet Shield 
-#include <Ethernet.h>   
+//#include <Ethernet.h> 
+
+// Use this for WizNET W5100 module and Arduino Ethernet Shield 
+#include <Bridge.h>   
+#include <YunClient.h>   
+#include <YunServer.h>   
 
 
 #define INCLUSION_MODE_TIME 1 // Number of minutes inclusion mode is enabled
@@ -87,9 +92,9 @@
 #define RADIO_SPI_SS_PIN    6  // radio SPI serial select
 
 #define RADIO_ERROR_LED_PIN 7  // Error led pin
-#define RADIO_RX_LED_PIN    8  // Receive led pin
+#define RADIO_RX_LED_PIN    13  // Receive led pin --- 13 is the Yun built-in red led
 #define RADIO_TX_LED_PIN    9  // the PCB, on board LED
-
+// for the Yun you will have to define WITH_LEDS_BLINKING_INVERSE in MyConfig.h
 
 // NRFRF24L01 radio driver (set low transmit power by default) 
 MyTransportNRF24 transport(RADIO_CE_PIN, RADIO_SPI_SS_PIN, RF24_PA_LEVEL_GW);  
@@ -113,17 +118,20 @@ MySensor gw(transport, hw /*, signer*/);
 
 
 #define IP_PORT 5003        // The port you want to open 
-IPAddress myIp (192, 168, 178, 66);  // Configure your static ip-address here    COMPILE ERROR HERE? Use Arduino IDE 1.5.7 or later!
+//IPAddress myIp (192, 168, 178, 66);  // Configure your static ip-address here    COMPILE ERROR HERE? Use Arduino IDE 1.5.7 or later!
 
 // The MAC address can be anything you want but should be unique on your network.
 // Newer boards have a MAC address printed on the underside of the PCB, which you can (optionally) use.
 // Note that most of the Ardunio examples use  "DEAD BEEF FEED" for the MAC address.
-byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };  // DEAD BEEF FEED
+//byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };  // DEAD BEEF FEED
+// Arduino Yun does not need software MAC address (already hardware defined)
 
 // a R/W server on the port
-EthernetServer server = EthernetServer(IP_PORT);
+//EthernetServer server = EthernetServer(IP_PORT);
+YunServer server = YunServer(IP_PORT);
 // handle to open connection
-EthernetClient client = EthernetClient();
+//EthernetClient client = EthernetClient();
+YunClient client = YunClient();
 
 char inputString[MAX_RECEIVE_LENGTH] = "";    // A string to hold incoming commands from serial/ethernet interface
 int inputPos = 0;
@@ -135,12 +143,14 @@ void output(const char *fmt, ... ) {
    vsnprintf_P(serialBuffer, MAX_SEND_LENGTH, fmt, args);
    va_end (args);
    Serial.print(serialBuffer);
-   server.write(serialBuffer);
+//   server.write(serialBuffer);
+   client.print(serialBuffer);
 }
 
 void setup()  
 { 
-  Ethernet.begin(mac, myIp);
+//  Ethernet.begin(mac, myIp);
+  Bridge.begin();
 
   setupGateway(INCLUSION_MODE_PIN, INCLUSION_MODE_TIME, output);
 
@@ -155,6 +165,7 @@ void setup()
 
   
   // start listening for clients
+  server.listenOnLocalhost ();  // for remote controller use server.noListenOnLocalhost ();
   server.begin();
 
 }
@@ -168,7 +179,8 @@ void loop() {
   
   // if an incoming client connects, there will be
   // bytes available to read via the client object
-  EthernetClient newclient = server.available();
+  // EthernetClient newclient = server.available();
+  YunClient newclient = server.accept();
   // if a new client connects make sure to dispose any previous existing sockets
   if (newclient) {
       if (client != newclient) {
