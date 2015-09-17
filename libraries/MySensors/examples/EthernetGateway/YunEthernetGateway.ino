@@ -79,7 +79,7 @@
 // Use this for WizNET W5100 module and Arduino Ethernet Shield 
 //#include <Ethernet.h> 
 
-// Use this for WizNET W5100 module and Arduino Ethernet Shield 
+// Use this for Arduino Yun
 #include <Bridge.h>   
 #include <YunClient.h>   
 #include <YunServer.h>   
